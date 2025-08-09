@@ -7,10 +7,15 @@ djangorestframework_simplejwt==5.5.1
 drf-yasg==1.21.10
 gunicorn==23.0.0
 inflection==0.5.1
+insultgenerator==1.0.3
+loremipsum==1.0.5
 packaging==25.0
 psycopg2-binary==2.9.10
 PyJWT==2.10.1
 pytz==2025.2
 PyYAML==6.0.2
+six==1.17.0
 sqlparse==0.5.3
 uritemplate==4.2.0
+White-Noise==0.1.0
+whitenoise==6.9.0
