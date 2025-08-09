@@ -1,0 +1,53 @@
+# Python stuff
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+.env
+*.venv
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django stuff
+*.sqlite3
+db.sqlite3
+/staticfiles/
+media/
+*.log
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.egg-info/
+.eggs/
+
+# VS Code settings (if you use it)
+.vscode/
+
+# PyCharm settings (if you use it)
+.idea/
+
+# macOS files
+.DS_Store
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# dotenv environment files (if you have any)
+.env
+
+# Your secret keys or config files that shouldn't go public
+secret_settings.py
+
+# Ignore migrations? (optional, but usually you commit migrations)
+# **/migrations/*.pyc
+# **/migrations/*.py
+
