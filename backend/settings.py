@@ -1,29 +1,47 @@
+"""
+Django settings (dev + prod friendly)
+
+Usage:
+- Create a local `.env` based on `.env.example`.
+- For local dev you can keep USE_RENDER_DB=False (default) and use SQLite or local Postgres.
+- To use Render Postgres set USE_RENDER_DB=True (or configure Render env vars) and deploy.
+
+Security reminder: never commit your real `.env` to git.
+"""
+
 import os
 from pathlib import Path
 import environ
 from datetime import timedelta
 
-# ─── ENVIRONMENT SETUP ───────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# ENV
+# ──────────────────────────────────────────────────────────────────────────────
 env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, []),
-    TIME_ZONE=(str, 'UTC'),
+    TIME_ZONE=(str, "UTC"),
     CORS_ALLOWED_ORIGINS=(list, []),
+    USE_RENDER_DB=(bool, False),  # Toggle that decides whether to use Render's DB
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env file if it exists
+# Load .env in project root if present
 env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 
-# ─── SECURITY ────────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# SECURITY / GENERAL
+# ──────────────────────────────────────────────────────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env("ALLOWED_HOSTS")
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
-# ─── APPLICATIONS ────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# APPS / MIDDLEWARE
+# ──────────────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
     "corsheaders",
     "django.contrib.admin",
@@ -38,12 +56,12 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
 
-    # Local apps
+    # Local
     "quotes",
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # Must be first
+    "corsheaders.middleware.CorsMiddleware",  # must be first for CORS headers
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -72,28 +90,67 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# ─── DATABASE ────────────────────────────────────────────────────────────────
-DB_ENGINE = env("DB_ENGINE", default="django.db.backends.sqlite3")
-if DB_ENGINE == "django.db.backends.sqlite3":
+# ──────────────────────────────────────────────────────────────────────────────
+# DATABASES
+# - Behavior:
+#   * If USE_RENDER_DB=True (env boolean) -> use the Render Postgres credentials (DB_HOST, DB_NAME, etc).
+#   * Else -> use DB_ENGINE value. Default is sqlite3 for zero-config local dev.
+# ──────────────────────────────────────────────────────────────────────────────
+USE_RENDER_DB = env.bool("USE_RENDER_DB", False)
+
+if USE_RENDER_DB:
+    # Render Postgres (or any remote Postgres). Ensure these env vars are set on the host.
     DATABASES = {
         "default": {
-            "ENGINE": DB_ENGINE,
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": DB_ENGINE,
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": env("DB_NAME"),
             "USER": env("DB_USER"),
             "PASSWORD": env("DB_PASSWORD"),
-            "HOST": env("DB_HOST", default="localhost"),
+            "HOST": env("DB_HOST"),
             "PORT": env("DB_PORT", default="5432"),
         }
     }
+else:
+    # Local/dev DB selection
+    DB_ENGINE = env("DB_ENGINE", default="django.db.backends.sqlite3")
+    if DB_ENGINE == "django.db.backends.sqlite3":
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": BASE_DIR / "db.sqlite3",
+            }
+        }
+    else:
+        # Local Postgres (if you prefer to run Postgres locally)
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": env("DB_NAME", default="learning_api_local"),
+                "USER": env("DB_USER", default="postgres"),
+                "PASSWORD": env("DB_PASSWORD", default=""),
+                "HOST": env("DB_HOST", default="localhost"),
+                "PORT": env("DB_PORT", default="5432"),
+            }
+        }
 
-# ─── PASSWORD VALIDATION ─────────────────────────────────────────────────────
+# Example (commented) — if you want to hardcode switching, you can uncomment below:
+# -----------------------------------------
+# # Production (Render) direct config example:
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "learning_api_huru",
+#         "USER": "henry",
+#         "PASSWORD": "RENDER_PASSWORD",
+#         "HOST": "dpg-d2bk64re5dus738aqj2g-a.oregon-postgres.render.com",
+#         "PORT": "5432",
+#     }
+# }
+# -----------------------------------------
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AUTH / PASSWORD VALIDATION
+# ──────────────────────────────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -101,7 +158,9 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# ─── REST FRAMEWORK + JWT ─────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# REST FRAMEWORK + SIMPLE JWT
+# ──────────────────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -121,27 +180,26 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# ─── CORS SETTINGS ───────────────────────────────────────────────────────────
-CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
-
-# ─── INTERNATIONALIZATION ─────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# CORS / INTERNATIONALIZATION / STATIC / MEDIA
+# ──────────────────────────────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = env("TIME_ZONE")
+TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_I18N = True
 USE_TZ = True
 
-# ─── STATIC FILES ─────────────────────────────────────────────────────────────
 STATIC_URL = "/static/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-# ─── MEDIA FILES ──────────────────────────────────────────────────────────────
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-# ─── DEFAULT PRIMARY KEY FIELD TYPE ──────────────────────────────────────────
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# ─── SWAGGER SETTINGS ─────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────────────────────
+# DRF-YASG / SWAGGER
+# ──────────────────────────────────────────────────────────────────────────────
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
@@ -153,3 +211,11 @@ SWAGGER_SETTINGS = {
         }
     },
 }
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Helpful debug-print (optional) — uncomment for debugging env loading
+# ──────────────────────────────────────────────────────────────────────────────
+# print("DEBUG =", DEBUG)
+# print("ALLOWED_HOSTS =", ALLOWED_HOSTS)
+# print("USE_RENDER_DB =", USE_RENDER_DB)
+# print("DB_HOST (ENV) =", os.getenv("DB_HOST"))
