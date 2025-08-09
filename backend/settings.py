@@ -58,11 +58,14 @@ INSTALLED_APPS = [
 
     # Local
     "quotes",
+    
+    'whitenoise.runserver_nostatic',  # Must come before django.contrib.staticfiles
+    'django.contrib.staticfiles',
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",  # must be first for CORS headers
-    "django.middleware.security.SecurityMiddleware",
+    'corsheaders.middleware.CorsMiddleware',  # keep first for CORS
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # add this right after CorsMiddleware    "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
