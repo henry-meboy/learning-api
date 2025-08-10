@@ -1,3 +1,4 @@
+# backend/settings.py
 import os
 from pathlib import Path
 import environ
@@ -7,13 +8,13 @@ from datetime import timedelta
 # BASE & ENV
 # ─────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
+
 env = environ.Env(
     DEBUG=(bool, False),
-    ALLOWED_HOSTS=(list, []),
-    TIME_ZONE=(str, "UTC"),
-    CORS_ALLOWED_ORIGINS=(list, []),
     USE_RENDER_DB=(bool, False),
 )
+
+# Load .env if present (do NOT commit .env)
 env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
@@ -22,11 +23,17 @@ if env_file.exists():
 # SECURITY
 # ─────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
-DEBUG = env("DEBUG")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+DEBUG = env.bool("DEBUG", False)
+
+# ALLOWED_HOSTS: accept comma-separated string in env or fall back to sane defaults
+_raw_allowed = env("ALLOWED_HOSTS", default="")
+if isinstance(_raw_allowed, (list, tuple)):
+    ALLOWED_HOSTS = list(_raw_allowed)
+else:
+    ALLOWED_HOSTS = [h.strip() for h in str(_raw_allowed).split(",") if h.strip()] or ["localhost", "127.0.0.1"]
 
 # ─────────────────────────────
-# INSTALLED APPS
+# APPS / MIDDLEWARE
 # ─────────────────────────────
 INSTALLED_APPS = [
     "corsheaders",
@@ -49,11 +56,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
 ]
 
-# ─────────────────────────────
-# MIDDLEWARE
-# ─────────────────────────────
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",  # must be high in the stack
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -119,7 +123,7 @@ else:
         }
 
 # ─────────────────────────────
-# PASSWORD VALIDATORS
+# AUTH / PASSWORD VALIDATORS
 # ─────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -153,10 +157,31 @@ SIMPLE_JWT = {
 # ─────────────────────────────
 # CORS
 # ─────────────────────────────
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+# Read comma-separated CORS_ALLOWED_ORIGINS from env (full origins required, e.g. https://example.com)
+_raw_cors = env("CORS_ALLOWED_ORIGINS", default="")
+if isinstance(_raw_cors, (list, tuple)):
+    CORS_ALLOWED_ORIGINS = list(_raw_cors)
+else:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in str(_raw_cors).split(",") if o.strip()]
+
+# Helpful: allow all vercel.app subdomains (useful for previews)
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
+
+# Optional toggle (for quick debugging only; do NOT use long-term in production)
+if env.bool("CORS_ALLOW_ALL_ORIGINS", False):
+    CORS_ALLOW_ALL_ORIGINS = True
+
+# Provide sensible defaults if none configured
+if not CORS_ALLOWED_ORIGINS and not env.bool("CORS_ALLOW_ALL_ORIGINS", False):
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 # ─────────────────────────────
-# I18N
+# I18N / TIMEZONE
 # ─────────────────────────────
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = env("TIME_ZONE", default="UTC")
