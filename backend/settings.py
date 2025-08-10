@@ -1,14 +1,10 @@
-"""
-Django settings for local + Render deployment
-"""
-
 import os
 from pathlib import Path
 import environ
 from datetime import timedelta
 
 # ─────────────────────────────
-# ENV
+# BASE & ENV
 # ─────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(
@@ -22,12 +18,15 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 
+# ─────────────────────────────
+# SECURITY
+# ─────────────────────────────
 SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
 # ─────────────────────────────
-# APPS
+# INSTALLED APPS
 # ─────────────────────────────
 INSTALLED_APPS = [
     "corsheaders",
@@ -45,14 +44,17 @@ INSTALLED_APPS = [
     # Local apps
     "quotes",
 
-    # Staticfiles
+    # Static
     "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
 ]
 
+# ─────────────────────────────
+# MIDDLEWARE
+# ─────────────────────────────
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",  # Serve static in prod
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -84,17 +86,15 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # ─────────────────────────────
 # DATABASE
 # ─────────────────────────────
-USE_RENDER_DB = env.bool("USE_RENDER_DB", False)
-
-if USE_RENDER_DB:
+if env.bool("USE_RENDER_DB", False):
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.postgresql",
+            "ENGINE": env("DB_ENGINE"),
             "NAME": env("DB_NAME"),
             "USER": env("DB_USER"),
             "PASSWORD": env("DB_PASSWORD"),
             "HOST": env("DB_HOST"),
-            "PORT": env("DB_PORT", default="5432"),
+            "PORT": env("DB_PORT"),
         }
     }
 else:
@@ -119,7 +119,7 @@ else:
         }
 
 # ─────────────────────────────
-# PASSWORD VALIDATION
+# PASSWORD VALIDATORS
 # ─────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -129,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ─────────────────────────────
-# REST FRAMEWORK + JWT
+# REST FRAMEWORK & JWT
 # ─────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -151,9 +151,13 @@ SIMPLE_JWT = {
 }
 
 # ─────────────────────────────
-# CORS / I18N
+# CORS
 # ─────────────────────────────
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+
+# ─────────────────────────────
+# I18N
+# ─────────────────────────────
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = env("TIME_ZONE", default="UTC")
 USE_I18N = True
